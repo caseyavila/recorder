@@ -5,4 +5,8 @@ pkgs.mkShell {
     pkg-config
     libsForQt5.full
   ];
+
+  buildInputs = with pkgs.buildPackages; [
+    pugixml
+  ];
 }
