@@ -3,7 +3,8 @@
 
 #include "channel.hpp"
 #include "epg.hpp"
-#include "channel_model.hpp"
+#include "epg_model.hpp"
+#include "epg_view.hpp"
 
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
@@ -19,8 +20,8 @@ int main(int argc, char *argv[]) {
         data << QString::fromStdString(channel->num_string());
     }
 
-    QTableView *table_view = new QTableView();
-    table_view->setModel(new ChannelModel(epg));
+    EpgView *table_view = new EpgView();
+    table_view->setModel(new EpgModel(epg));
 
     // Layout to hold the list view
     QVBoxLayout *layout = new QVBoxLayout();

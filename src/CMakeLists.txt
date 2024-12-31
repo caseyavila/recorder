@@ -6,6 +6,8 @@ add_executable(
   program.cpp
   channel.cpp
   epg.cpp
-  channel_model.cpp)
+  epg_model.cpp
+  epg_view.cpp
+)
 
 target_link_libraries(recorder Qt5::Widgets pugixml)
