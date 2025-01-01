@@ -1,16 +1,14 @@
 #include "epg_view.hpp"
 
-constexpr int ROW_HEIGHT = 30;
-
 EpgView::EpgView(QWidget *parent) : QAbstractItemView(parent) { }
 
 void EpgView::setModel(QAbstractItemModel *model) {
     QAbstractItemView::setModel(model);
 
-    verticalScrollBar()->setRange(0, model->rowCount() * ROW_HEIGHT - viewport()->height());
+    setBars();
     verticalScrollBar()->setSingleStep(ROW_HEIGHT);
-
-    horizontalScrollBar()->setRange(0, 1000);
+    horizontalScrollBar()->setSingleStep(15 * 5);
+    setSelectionMode(QAbstractItemView::SingleSelection);
 }
 
 int EpgView::horizontalOffset() const {
@@ -21,26 +19,29 @@ int EpgView::verticalOffset() const {
     return verticalScrollBar()->value();
 }
 
-
 void EpgView::scrollTo(const QModelIndex &index,
                        QAbstractItemView::ScrollHint) {
     QRect viewRect = viewport()->rect();
     QRect itemRect = visualRect(index);
 
-    if (itemRect.left() < viewRect.left())
+    if (itemRect.left() < viewRect.left()) {
         horizontalScrollBar()->setValue(horizontalOffset()
-                + itemRect.left() - viewRect.left());
-    else if (itemRect.right() > viewRect.right())
+            + itemRect.left() - viewRect.left());
+    } else if (itemRect.right() > viewRect.right()) {
         horizontalScrollBar()->setValue(horizontalOffset()
-                + qMin(itemRect.right() - viewRect.right(),
-                       itemRect.left() - viewRect.left()));
-    if (itemRect.top() < viewRect.top())
+            + std::min(itemRect.right() - viewRect.right(),
+                itemRect.left() - viewRect.left()));
+    }
+
+    if (itemRect.top() < viewRect.top()) {
         verticalScrollBar()->setValue(verticalOffset() +
-                itemRect.top() - viewRect.top());
-    else if (itemRect.bottom() > viewRect.bottom())
+           itemRect.top() - viewRect.top());
+    } else if (itemRect.bottom() > viewRect.bottom()) {
         verticalScrollBar()->setValue(verticalOffset() +
-                qMin(itemRect.bottom() - viewRect.bottom(),
-                     itemRect.top() - viewRect.top()));
+            std::min(itemRect.bottom() - viewRect.bottom(),
+                itemRect.top() - viewRect.top()));
+    }
+
     viewport()->update();
 }
 
@@ -59,7 +60,6 @@ QRegion EpgView::visualRegionForSelection(const QItemSelection &selection) const
 
     return region;
 }
-
 
 QRect EpgView::visualRect(const QModelIndex &index) const {
     QRect rect;
@@ -83,8 +83,40 @@ void EpgView::wheelEvent(QWheelEvent *e) {
 }
 
 void EpgView::resizeEvent(QResizeEvent *e) {
-    verticalScrollBar()->setRange(0, model()->rowCount() * ROW_HEIGHT - viewport()->height());
-    horizontalScrollBar()->setRange(0, 1000);
+    setBars();
+}
+
+void EpgView::paintEvent(QPaintEvent *e) {
+    QAbstractItemView::paintEvent(e);
+
+    QPainter painter(viewport());
+
+    /* Can optimize */
+    for (int row = 0; row < model()->rowCount(); ++row) {
+        for (int column = 0; column < model()->columnCount(); ++column) {
+            QModelIndex index = model()->index(row, column);
+
+            QRect rect = visualRect(index);
+
+            if (column == 0) {
+                ends.push_back(std::vector<int>());
+            }
+
+            ends[row].push_back(rect.right());
+
+            if (e->rect().intersects(rect)) {
+                QStyleOptionViewItem option = viewOptions();
+                option.rect = rect;
+
+                if (selectionModel()->isSelected(index)) {
+                    option.state |= QStyle::State_Selected;
+                }
+
+                itemDelegate()->paint(&painter, option, index);
+                paintOutline(&painter, rect);
+            }
+        }
+    }
 }
 
 void EpgView::paintOutline(QPainter *painter, const QRectF &rect) {
@@ -94,47 +126,50 @@ void EpgView::paintOutline(QPainter *painter, const QRectF &rect) {
     painter->restore();
 }
 
-void EpgView::paintEvent(QPaintEvent *e) {
-    QAbstractItemView::paintEvent(e);
 
-    QPainter painter(viewport());
-
-    for (int row = 0; row < model()->rowCount(); ++row) {
-        for (int column = 0; column < model()->columnCount(); ++column) {
-            QModelIndex index = model()->index(row, column);
-
-            QRect rect = visualRect(index);
-
-            if (e->rect().intersects(rect)) {
-                QStyleOptionViewItem option = viewOptions();
-                option.rect = rect;
-                itemDelegate()->paint(&painter, option, index);
-
-                paintOutline(&painter, rect);
-            }
-        }
-    }
+void EpgView::setBars() {
+    verticalScrollBar()->setRange(0, model()->rowCount() * ROW_HEIGHT - viewport()->height());
+    horizontalScrollBar()->setRange(0, 1440 * 2 * 5 - viewport()->width());
 }
 
-QModelIndex EpgView::moveCursor(CursorAction, Qt::KeyboardModifiers) {
-    /* Probably want to change this ... */
-    std::cout << "movecursor\n";
-    return currentIndex();
+QModelIndex EpgView::moveCursor(CursorAction action, Qt::KeyboardModifiers) {
+    QModelIndex index = currentIndex();
+
+    if (!index.isValid()) {
+        return index;
+    }
+
+    if (action == MoveLeft || action == MoveRight) {
+        const int offset = (action == MoveLeft ? -1 : 1);
+        index = model()->index(index.row(), index.column() + offset);
+
+        /* So we don't arrow key off-screen */
+        if (action == MoveRight && ends[index.row()][index.column()] >
+                horizontalScrollBar()->maximum() + viewport()->width()) {
+            return currentIndex();
+        }
+    }
+
+    return index;
 }
 
 void EpgView::setSelection(const QRect &rect, QItemSelectionModel::SelectionFlags command) {
-    /* Probably want to change this ... */
-    std::cout << "setSelection\n";
+    QModelIndex index = indexAt(rect.bottomRight());
+    QItemSelection selection(index, index);
+    selectionModel()->select(selection, command);
 }
 
 QModelIndex EpgView::indexAt(const QPoint &point) const {
-    /* Probably want to change this ... */
-    std::cout << "indexAt\n";
-    return rootIndex();
+    int row = (point.y() + verticalOffset()) / ROW_HEIGHT;
+    int column = 0;
+
+    while (ends[row][column] < point.x() + horizontalOffset()) {
+        column++;
+    }
+
+    return model()->index(row, column);
 }
 
 bool EpgView::isIndexHidden(const QModelIndex &index) const {
-    /* Probably want to change this ... */
-    std::cout << "isindexhidden\n";
     return false;
 }

@@ -9,7 +9,7 @@ int EpgModel::rowCount(const QModelIndex& parent = QModelIndex()) const {
 }
 
 int EpgModel::columnCount(const QModelIndex& parent = QModelIndex()) const {
-    return 100;
+    return 200;
 }
 
 QVariant EpgModel::headerData(int section,

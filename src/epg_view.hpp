@@ -1,10 +1,14 @@
 #pragma once
 
 #include <iostream>
-
 #include <QtWidgets>
 
 class EpgView : public QAbstractItemView {
+  private:
+    constexpr static int ROW_HEIGHT = 30;
+    mutable std::vector<std::vector<int>> ends;
+    mutable int max_end;
+
   public:
     EpgView(QWidget *parent = nullptr);
 
@@ -24,4 +28,5 @@ class EpgView : public QAbstractItemView {
     void resizeEvent(QResizeEvent *e) override;
 
     void paintOutline(QPainter *painter, const QRectF &rect);
+    void setBars();
 };
