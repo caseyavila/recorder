@@ -5,7 +5,12 @@
 
 class EpgView : public QAbstractItemView {
   private:
-    constexpr static int ROW_HEIGHT = 30;
+    constexpr static int ROW_HEIGHT = 40;
+    constexpr static int MINUTE_WIDTH = 5;
+    constexpr static int HEADER_WIDTH = 40;
+    constexpr static int HEADER_HEIGHT = 20;
+    constexpr static int VIEWABLE_TIME = 4320 * MINUTE_WIDTH; /* 3 days */
+
     mutable std::vector<std::vector<int>> ends;
     mutable int max_end;
 

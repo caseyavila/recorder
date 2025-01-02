@@ -7,7 +7,7 @@ void EpgView::setModel(QAbstractItemModel *model) {
 
     setBars();
     verticalScrollBar()->setSingleStep(ROW_HEIGHT);
-    horizontalScrollBar()->setSingleStep(15 * 5);
+    horizontalScrollBar()->setSingleStep(15 * MINUTE_WIDTH);
     setSelectionMode(QAbstractItemView::SingleSelection);
 }
 
@@ -52,8 +52,7 @@ QRegion EpgView::visualRegionForSelection(const QItemSelection &selection) const
     for (const QItemSelectionRange &range : selection) {
         for (int row = range.top(); row <= range.bottom(); ++row) {
             for (int column = range.left(); column < range.right(); ++column) {
-                QModelIndex index = model()->index(row, column);
-                region += visualRect(index);
+                region += visualRect(model()->index(row, column));
             }
         }
     }
@@ -68,10 +67,13 @@ QRect EpgView::visualRect(const QModelIndex &index) const {
         int duration = model()->data(index, Qt::UserRole).toInt();
         int int_start = model()->data(index, Qt::UserRole + 1).toInt();
 
-        rect = QRect(int_start * 5 - horizontalOffset(),
+        rect = QRect(int_start * MINUTE_WIDTH - horizontalOffset(),
                      index.row() * ROW_HEIGHT - verticalOffset(),
-                     duration * 5,
+                     duration * MINUTE_WIDTH,
                      ROW_HEIGHT);
+
+        rect.moveRight(rect.right() + HEADER_WIDTH);
+        rect.moveTop(rect.top() + HEADER_HEIGHT);
     }
 
     return rect;
@@ -105,6 +107,7 @@ void EpgView::paintEvent(QPaintEvent *e) {
             ends[row].push_back(rect.right());
 
             if (e->rect().intersects(rect)) {
+
                 QStyleOptionViewItem option = viewOptions();
                 option.rect = rect;
 
@@ -129,7 +132,7 @@ void EpgView::paintOutline(QPainter *painter, const QRectF &rect) {
 
 void EpgView::setBars() {
     verticalScrollBar()->setRange(0, model()->rowCount() * ROW_HEIGHT - viewport()->height());
-    horizontalScrollBar()->setRange(0, 1440 * 2 * 5 - viewport()->width());
+    horizontalScrollBar()->setRange(0, VIEWABLE_TIME - viewport()->width());
 }
 
 QModelIndex EpgView::moveCursor(CursorAction action, Qt::KeyboardModifiers) {
@@ -160,7 +163,7 @@ void EpgView::setSelection(const QRect &rect, QItemSelectionModel::SelectionFlag
 }
 
 QModelIndex EpgView::indexAt(const QPoint &point) const {
-    int row = (point.y() + verticalOffset()) / ROW_HEIGHT;
+    int row = (point.y() + verticalOffset() - HEADER_HEIGHT) / ROW_HEIGHT;
     int column = 0;
 
     while (ends[row][column] < point.x() + horizontalOffset()) {

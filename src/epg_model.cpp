@@ -4,11 +4,11 @@
 
 EpgModel::EpgModel(const Epg epg) : epg(epg) { }
 
-int EpgModel::rowCount(const QModelIndex& parent = QModelIndex()) const {
+int EpgModel::rowCount(const QModelIndex& parent) const {
     return epg.channel_vec.size();
 }
 
-int EpgModel::columnCount(const QModelIndex& parent = QModelIndex()) const {
+int EpgModel::columnCount(const QModelIndex& parent) const {
     return 200;
 }
 
