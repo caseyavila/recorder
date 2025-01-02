@@ -11,8 +11,8 @@ class EpgView : public QAbstractItemView {
     constexpr static int HEADER_HEIGHT = 20;
     constexpr static int VIEWABLE_TIME = 4320 * MINUTE_WIDTH; /* 3 days */
 
-    mutable std::vector<std::vector<int>> ends;
-    mutable int max_end;
+    std::vector<std::vector<int>> ends;
+    int max_end;
 
   public:
     EpgView(QWidget *parent = nullptr);
@@ -27,11 +27,17 @@ class EpgView : public QAbstractItemView {
     bool isIndexHidden(const QModelIndex &index) const override;
     void setSelection(const QRect &rect, QItemSelectionModel::SelectionFlags command) override;
     QRegion visualRegionForSelection(const QItemSelection &selection) const override;
+    void dataChanged(const QModelIndex &topLeft,
+                     const QModelIndex &bottomRight,
+                     const QVector<int> &roles = QVector<int>()) override;
 
     void paintEvent(QPaintEvent *) override;
-    void wheelEvent(QWheelEvent *e) override;
-    void resizeEvent(QResizeEvent *e) override;
+    void wheelEvent(QWheelEvent *) override;
+    void resizeEvent(QResizeEvent *) override;
 
     void paintOutline(QPainter *painter, const QRectF &rect);
     void setBars();
+    void setEnds();
+    int duration(const QModelIndex &index) const;
+    int int_start(const QModelIndex &index) const;
 };
